@@ -44,10 +44,14 @@ import ai.djl.training.evaluator.Accuracy;
 import ai.djl.training.initializer.Initializer;
 import ai.djl.training.initializer.XavierInitializer;
 import ai.djl.training.loss.Loss;
+import ai.djl.training.optimizer.Optimizer;
+import ai.djl.training.optimizer.learningrate.LearningRateTracker;
+import ai.djl.training.optimizer.learningrate.MultiFactorTracker;
 import ai.djl.training.util.ProgressBar;
 import ai.djl.translate.Pipeline;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.cli.CommandLine;
@@ -171,13 +175,39 @@ public final class TrainResnetWithCifar10 {
     }
 
     private TrainingConfig setupTrainingConfig(Arguments arguments) {
+        int batchSize = arguments.getBatchSize();
         Initializer initializer =
                 new XavierInitializer(
                         XavierInitializer.RandomType.UNIFORM, XavierInitializer.FactorType.AVG, 2);
+        // epoch number to change learning rate
+        // change learning rate early for pre-trained model
+        int[] epochs;
+        if (arguments.isPreTrained()) {
+            epochs = new int[] {2, 5, 8};
+        } else {
+            epochs = new int[] {20, 60, 90, 120, 180};
+        }
+        int[] steps = Arrays.stream(epochs).map(k -> k * 60000 / batchSize).toArray();
+        MultiFactorTracker learningRateTracker =
+                LearningRateTracker.multiFactorTracker()
+                        .setSteps(steps)
+                        .optBaseLearningRate(1e-3f)
+                        .optFactor((float) Math.sqrt(.1f))
+                        .optWarmUpBeginLearningRate(1e-4f)
+                        .optWarmUpSteps(200)
+                        .build();
+        Optimizer adam =
+                Optimizer.adam()
+                        .optLearningRateTracker(learningRateTracker)
+                        .optWeightDecays(0.001f)
+                        .optClipGrad(5f)
+                        .build();
+
         return new DefaultTrainingConfig(Loss.softmaxCrossEntropyLoss())
                 .optInitializer(initializer)
+                .optOptimizer(adam)
                 .addEvaluator(new Accuracy())
-                .setBatchSize(arguments.getBatchSize())
+                .setBatchSize(batchSize)
                 .optDevices(Device.getDevices(arguments.getMaxGpus()));
     }
 

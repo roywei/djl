@@ -44,8 +44,9 @@ public class TrainResNetTest {
         }
         if (Device.getGpuCount() > 0) {
             // Limit max 4 gpu for cifar10 training to make it converge faster.
-            // and only train 10 batch for unit test.
-            String[] args = {"-e", "10", "-g", "4", "-s", "-p"};
+            // and only train 10 batch for test.
+            int numGPU = Math.max(Device.getGpuCount(), 4);
+            String[] args = {"-e", "15", "-g", String.valueOf(numGPU), "-s", "-p"};
 
             TrainResnetWithCifar10 test = new TrainResnetWithCifar10();
             ExampleTrainingResult result = test.runExample(args);
@@ -64,8 +65,9 @@ public class TrainResNetTest {
         }
         if (Device.getGpuCount() > 0) {
             // Limit max 4 gpu for cifar10 training to make it converge faster.
-            // and only train 10 batch for unit test.
-            String[] args = {"-e", "10", "-g", "4"};
+            // and only train 10 batch for test.
+            int numGPU = Math.max(Device.getGpuCount(), 4);
+            String[] args = {"-e", "15", "-g", String.valueOf(numGPU)};
 
             TrainResnetWithCifar10 test = new TrainResnetWithCifar10();
             ExampleTrainingResult result = test.runExample(args);
