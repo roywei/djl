@@ -196,6 +196,41 @@ public class TfNDArray implements NDArray {
         throw new UnsupportedOperationException("Not implemented");
     }
 
+    @Override
+    public double[] toDoubleArray() {
+        double[] result = new double[(int) getShape().size()];
+        tensor.rawData().asDoubles().read(result);
+        return result;
+    }
+
+    @Override
+    public float[] toFloatArray() {
+        float[] result = new float[(int) getShape().size()];
+        tensor.rawData().asFloats().read(result);
+        return result;
+    }
+
+    @Override
+    public int[] toIntArray() {
+        int[] result = new int[(int) getShape().size()];
+        tensor.rawData().asInts().read(result);
+        return result;
+    }
+
+    @Override
+    public long[] toLongArray() {
+        long[] result = new long[(int) getShape().size()];
+        tensor.rawData().asLongs().read(result);
+        return result;
+    }
+
+    @Override
+    public boolean[] toBooleanArray() {
+        boolean[] result = new boolean[(int) getShape().size()];
+        tensor.rawData().asBooleans().read(result);
+        return result;
+    }
+
     /** {@inheritDoc} */
     @Override
     public ByteBuffer toByteBuffer() {

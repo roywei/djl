@@ -1,7 +1,114 @@
 group "ai.djl.tensorflow"
 
 boolean isRelease = project.hasProperty("release") || project.hasProperty("staging")
-version = "2.0.0-a" + (isRelease ? "" : "-SNAPSHOT")
+version = "2.1.0-a" + (isRelease ? "" : "-SNAPSHOT")
+def tf_versoin = "2.1.0-a"
+def mkl_dnn_version = "0.21.2-1.5.2"
+
+repositories {
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots/"
+    }
+}
+
+configurations {
+    exclusion
+}
+
+dependencies {
+    testRuntime "org.tensorflow:tensorflow-core-api:0.1.0-SNAPSHOT:linux-x86_64-mkl-gpu"
+    testRuntime "org.tensorflow:tensorflow-core-api:0.1.0-SNAPSHOT:linux-x86_64-mkl"
+    testRuntime "org.tensorflow:tensorflow-core-api:0.1.0-SNAPSHOT:macosx-x86_64-mkl"
+    //testRuntime "org.tensorflow:tensorflow-core-api:0.1.0-SNAPSHOT:windows-x86_64"
+    testRuntime "org.bytedeco:mkl-dnn:${mkl_dnn_version}:macosx-x86_64"
+    testRuntime "org.bytedeco:mkl-dnn:${mkl_dnn_version}:linux-x86_64"
+    //testRuntime "org.bytedeco:mkl-dnn:${mkl_dnn_version}:windows-x86_64"
+
+    exclusion "org.bytedeco:javacpp:1.5.2"
+}
+
+task uploadTensorFlowNativeLibs() {
+    doLast {
+        copy {
+            from configurations.testRuntime
+            into "libs"
+        }
+
+        //extract all files
+        def files = ["libs/tensorflow-core-api-0.1.0-SNAPSHOT-linux-x86_64-mkl-gpu.jar",
+                     "libs/tensorflow-core-api-0.1.0-SNAPSHOT-linux-x86_64-mkl.jar",
+                     "libs/tensorflow-core-api-0.1.0-SNAPSHOT-macosx-x86_64-mkl.jar",
+                     //"libs/tensorflow-core-api-0.1.0-SNAPSHOT-windows-x86_64.jar",
+                     //"libs/mkl-dnn-0.21.2-1.5.2-windows-x86_64.jar",
+                     "libs/mkl-dnn-0.21.2-1.5.2-linux-x86_64.jar",
+                     "libs/mkl-dnn-0.21.2-1.5.2-macosx-x86_64.jar"]
+
+        files.each { item ->
+            exec {
+                println "extracting: ${item}"
+                commandLine "jar", "xf", item
+            }
+        }
+
+        def tfUnzipDir = "org/tensorflow/internal/c_api/"
+        def mklUnzipDir = "org/bytedeco/mkldnn/"
+
+        // remove unecessary cmake and header files
+        delete "${mklUnzipDir}/linux-x86_64/include"
+        delete "${mklUnzipDir}/linux-x86_64/lib"
+        delete "${mklUnzipDir}/macosx-x86_64/include"
+        delete "${mklUnzipDir}/macosx-x86_64/lib"
+        delete "${mklUnzipDir}/windows-x86_64/include"
+        delete "${mklUnzipDir}/windows-x86_64/lib"
+
+        exec {
+            commandLine "gzip", "-r", "org/"
+        }
+
+        copy {
+            from "${mklUnzipDir}/linux-x86_64/"
+            into "tensorflow-${tf_versoin}/linux/cpu/"
+        }
+
+        def dirs = [
+                "${tfUnzipDir}/linux-x86_64-mkl/"    : "tensorflow-${tf_versoin}/linux/cpu/",
+                "${mklUnzipDir}/linux-x86_64/"       : "tensorflow-${tf_versoin}/linux/gpu/",
+                "${tfUnzipDir}/linux-x86_64-mkl-gpu/": "tensorflow-${tf_versoin}/linux/gpu/",
+                // "${mklUnzipDir}/windows-x86_64/"     : "tensorflow-${tf_versoin}/windows/cpu/",
+                // "${tfUnzipDir}/windows-x86_64/"      : "tensorflow-${tf_versoin}/windows/cpu/",
+                "${mklUnzipDir}/macosx-x86_64/"      : "tensorflow-${tf_versoin}/osx/cpu/",
+                "${tfUnzipDir}/macosx-x86_64-mkl/"   : "tensorflow-${tf_versoin}/osx/cpu/"]
+
+        dirs.each { entry ->
+            copy {
+                from entry.key
+                into entry.value
+            }
+        }
+
+        def f = new File("tensorflow-${tf_versoin}/files.txt")
+        def uploadDirs = ["tensorflow-${tf_versoin}/linux/cpu/",
+                          "tensorflow-${tf_versoin}/linux/gpu/",
+                          //"tensorflow-${tf_versoin}/windows/cpu/",
+                          "tensorflow-${tf_versoin}/osx/cpu/"]
+        uploadDirs.each { item ->
+            fileTree(item).files.name.each {
+                def out = item - "tensorflow-${tf_versoin}"
+                f << out + it
+                f << "\n"
+            }
+        }
+
+        exec {
+            commandLine "aws", "s3", "sync", "tensorflow-${tf_versoin}/", "s3://djl-ai/publish/tensorflow-${tf_versoin}/"
+        }
+
+        delete "libs/"
+        delete "org/"
+        delete "META-INF/"
+        delete "tensorflow-${tf_versoin}/"
+    }
+}
 
 jar {
     doFirst {
@@ -18,8 +125,8 @@ publishing {
     publications {
         maven(MavenPublication) {
             pom {
-                name = "TensorFlow 2.0 native library"
-                description = "TensorFlow 2.0 native library"
+                name = "TensorFlow 2.1 native library"
+                description = "TensorFlow 2.1 native library"
                 url = "http://www.djl.ai/tensorflow/${project.name}"
             }
         }
