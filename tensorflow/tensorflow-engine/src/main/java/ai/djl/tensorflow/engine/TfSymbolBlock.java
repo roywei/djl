@@ -117,7 +117,12 @@ public class TfSymbolBlock implements SymbolBlock {
     /** {@inheritDoc} */
     @Override
     public void clear() {
-        bundle.close();
+        if (session != null) {
+            session.close();
+        }
+        if (bundle != null) {
+            bundle.close();
+        }
     }
 
     /** {@inheritDoc} */
