@@ -19,17 +19,26 @@ import ai.djl.modality.Classifications;
 import ai.djl.modality.cv.transform.Resize;
 import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.modality.cv.util.BufferedImageUtils;
+import ai.djl.modality.cv.util.NDImageUtils;
 import ai.djl.ndarray.NDArray;
+import ai.djl.ndarray.NDList;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.training.util.ProgressBar;
+import ai.djl.translate.Batchifier;
 import ai.djl.translate.Pipeline;
 import ai.djl.translate.Transform;
 import ai.djl.translate.TranslateException;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import ai.djl.translate.Translator;
+import ai.djl.translate.TranslatorContext;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
@@ -51,33 +60,44 @@ public class MobileNetTest {
                         .optProgress(new ProgressBar())
                         .build();
 
-        Pipeline pipeline = new Pipeline();
-        pipeline.add(new Resize(224, 224)).add(new CustomTransform());
 
-        ImageClassificationTranslator myTranslator =
-                ImageClassificationTranslator.builder()
-                        .setPipeline(pipeline)
-                        .setSynsetArtifactName("synset.txt")
-                        .optApplySoftmax(false)
-                        .build();
         try (ZooModel<BufferedImage, Classifications> model = ModelZoo.loadModel(criteria)) {
             try (Predictor<BufferedImage, Classifications> predictor =
-                    model.newPredictor(myTranslator)) {
+                    model.newPredictor(new MyTranslator())) {
                 Classifications result =
                         predictor.predict(
                                 BufferedImageUtils.fromFile(
                                         Paths.get("../../examples/src/test/resources/kitten.jpg")));
-                Assert.assertTrue(result.best().getClassName().equals("n02124075 Egyptian cat"));
+                System.out.println(result.best());
             }
         }
     }
 
-    private static final class CustomTransform implements Transform {
+    private static final class MyTranslator implements Translator<BufferedImage, Classifications> {
+
+        private List<String> classes;
+
+        @Override
+        public Batchifier getBatchifier() {
+            return null;
+        }
+
+        public MyTranslator() {
+            classes = IntStream.range(0, 1000).mapToObj(String::valueOf).collect(Collectors.toList());
+        }
 
         /** {@inheritDoc} */
         @Override
-        public NDArray transform(NDArray array) {
-            return array.div(127.5f).sub(1f);
+        public NDList processInput(TranslatorContext ctx, BufferedImage input) {
+            NDArray array = BufferedImageUtils.toNDArray(ctx.getNDManager(), input, NDImageUtils.Flag.COLOR);
+            return new NDList(NDImageUtils.resize(array, 224).div(127.5f).sub(1f).expandDims(0));
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public Classifications processOutput(TranslatorContext ctx, NDList list) {
+            NDArray probabilities = list.singletonOrThrow();
+            return new Classifications(classes, probabilities);
         }
     }
 }
