@@ -57,7 +57,7 @@ public abstract class BaseImageTranslator<T> implements Translator<BufferedImage
     @Override
     public NDList processInput(TranslatorContext ctx, BufferedImage input) {
         NDArray array = BufferedImageUtils.toNDArray(ctx.getNDManager(), input, flag);
-        return pipeline.transform(new NDList(array));
+        return pipeline.transform(new NDList(array.expandDims(0)));
     }
 
     /**

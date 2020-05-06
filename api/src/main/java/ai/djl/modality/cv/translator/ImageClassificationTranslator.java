@@ -18,6 +18,7 @@ import ai.djl.modality.Classifications;
 import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDList;
 import ai.djl.ndarray.NDManager;
+import ai.djl.translate.Batchifier;
 import ai.djl.translate.TranslatorContext;
 import ai.djl.util.Utils;
 import java.io.IOException;
@@ -40,6 +41,11 @@ public class ImageClassificationTranslator extends BaseImageTranslator<Classific
         super(builder);
         this.synsetArtifactName = builder.synsetArtifactName;
         this.applySoftmax = builder.applySoftmax;
+    }
+
+    @Override
+    public Batchifier getBatchifier() {
+        return null;
     }
 
     /** {@inheritDoc} */
