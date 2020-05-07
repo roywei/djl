@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.proto.framework.ConfigProto;
-import org.tensorflow.proto.framework.ConfigProtoOrBuilder;
 import org.tensorflow.proto.framework.GPUOptions;
 import org.tensorflow.proto.framework.RunOptions;
 
@@ -72,7 +71,7 @@ public class TfModel extends BaseModel {
         SavedModelBundle.Loader loader =
                 SavedModelBundle.loader(modelDir.toString()).withTags(tags);
         if(Device.defaultDevice().getDeviceType().equals("gpu")){
-            proto = ConfigProto.newBuilder().setGpuOptions(GPUOptions.newBuilder().setAllowGrowth(true).build()).build();
+            proto = ConfigProto.newBuilder().setGpuOptions(GPUOptions.newBuilder().setAllowGrowth(false).build()).build();
         }
         if (proto != null) {
             loader.withConfigProto(proto);

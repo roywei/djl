@@ -13,6 +13,7 @@
 package ai.djl.tensorflow.integration.modality.cv;
 
 import ai.djl.Application;
+import ai.djl.Device;
 import ai.djl.ModelException;
 import ai.djl.inference.Predictor;
 import ai.djl.modality.Classifications;
@@ -36,9 +37,11 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.zip.DeflaterInputStream;
 
 import ai.djl.translate.Translator;
 import ai.djl.translate.TranslatorContext;
+import org.tensorflow.proto.util.testlog.GPUInfo;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
@@ -49,6 +52,9 @@ public class MobileNetTest {
     public void testMobileNetV2() throws IOException, ModelException, TranslateException {
         if (System.getProperty("os.name").startsWith("Win")) {
             throw new SkipException("Tensorflow doesn't support Windows yet.");
+        }
+        if (Device.getGpuCount() > 0){
+            throw new SkipException("GPU not supported");
         }
 
         Criteria<BufferedImage, Classifications> criteria =

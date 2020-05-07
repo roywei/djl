@@ -40,6 +40,7 @@ public class TfSymbolBlock implements SymbolBlock {
 
     private NDManager manager;
     private SavedModelBundle bundle;
+    // private Graph graph;
     private MetaGraphDef metaGraphDef;
     private Session session;
 
