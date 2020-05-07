@@ -55,8 +55,8 @@ public class MobileNetTest {
                 Criteria.builder()
                         .optApplication(Application.CV.IMAGE_CLASSIFICATION)
                         .setTypes(BufferedImage.class, Classifications.class)
-                        .optArtifactId("mobilenet")
-                        .optFilter("flavor", "v2")
+                        .optArtifactId("resnet")
+                        .optFilter("flavor", "v1")
                         .optProgress(new ProgressBar())
                         .build();
 
@@ -90,7 +90,7 @@ public class MobileNetTest {
         @Override
         public NDList processInput(TranslatorContext ctx, BufferedImage input) {
             NDArray array = BufferedImageUtils.toNDArray(ctx.getNDManager(), input, NDImageUtils.Flag.COLOR);
-            return new NDList(NDImageUtils.resize(array, 224).div(127.5f).sub(1f).expandDims(0));
+            return new NDList(NDImageUtils.resize(array, 224).div(224f).expandDims(0));
         }
 
         /** {@inheritDoc} */
