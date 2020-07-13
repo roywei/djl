@@ -58,9 +58,12 @@ public class TfNDArray implements NDArray {
     private static final int MAX_DEPTH = 10;
     private static final int MAX_ROWS = 10;
     private static final int MAX_COLUMNS = 20;
-    private static final int MAX_OUTPUTS_PER_OP = 8;
+    private static final int MAX_OUTPUTS_PER_OP = 1000;
 
     private String uid;
+    // TensorFlow tensors will always have a copy on CPU, we will close tensors as much as possible
+    // and use
+    // operand which is stored on target device
     private Tensor<?> tensor;
     private Shape shape;
     private TfNDManager manager;
@@ -68,15 +71,28 @@ public class TfNDArray implements NDArray {
     private Operand<?> operand;
     private String name;
     private TfNDArrayEx tfNDArrayEx;
+    private DataType dataType;
 
     TfNDArray(NDManager manager, Tensor<?> tensor) {
         this.manager = (TfNDManager) manager;
-        this.tensor = tensor;
-        this.shape = new Shape(tensor.shape().asArray());
         this.tf = this.manager.getTf();
-        tfNDArrayEx = new TfNDArrayEx(this);
         uid = UUID.randomUUID().toString();
         manager.attach(uid, this);
+        this.operand =
+                this.manager
+                        .getEagerSession()
+                        .opBuilder("Const", "Const_" + TfNDManager.nextNameAssignment())
+                        .setAttr("dtype", tensor.dataType())
+                        .setAttr("value", tensor)
+                        .setDevice(getTfDevice())
+                        .build()
+                        .output(0);
+        // cache shape and data type information so we can close tensor later
+        this.shape = new Shape(tensor.shape().asArray());
+        this.dataType = TfDataType.fromTf(tensor.dataType());
+        tfNDArrayEx = new TfNDArrayEx(this);
+        // close tensor after creating operand on target device
+        tensor.close();
     }
 
     TfNDArray(NDManager manager, Operand<?> out) {
@@ -118,7 +134,7 @@ public class TfNDArray implements NDArray {
     /** {@inheritDoc} */
     @Override
     public DataType getDataType() {
-        return TfDataType.fromTf(getTfDataType());
+        return dataType;
     }
 
     /** {@inheritDoc} */
@@ -132,13 +148,11 @@ public class TfNDArray implements NDArray {
     public Shape getShape() {
         if (shape == null) {
             // runToTensor();
-            shape = new Shape(tensor.shape().asArray());
+            try (Tensor<?> tensor = operand.asTensor()) {
+                shape = new Shape(tensor.shape().asArray());
+            }
         }
         return shape;
-    }
-
-    public org.tensorflow.DataType<? extends TType> getTfDataType() {
-        return tensor.dataType();
     }
 
     /** {@inheritDoc} */
@@ -193,7 +207,9 @@ public class TfNDArray implements NDArray {
     @Override
     public double[] toDoubleArray() {
         double[] result = new double[(int) getShape().size()];
-        tensor.rawData().asDoubles().read(result);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().asDoubles().read(result);
+        }
         return result;
     }
 
@@ -201,7 +217,9 @@ public class TfNDArray implements NDArray {
     @Override
     public float[] toFloatArray() {
         float[] result = new float[(int) getShape().size()];
-        tensor.rawData().asFloats().read(result);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().asFloats().read(result);
+        }
         return result;
     }
 
@@ -209,7 +227,9 @@ public class TfNDArray implements NDArray {
     @Override
     public int[] toIntArray() {
         int[] result = new int[(int) getShape().size()];
-        tensor.rawData().asInts().read(result);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().asInts().read(result);
+        }
         return result;
     }
 
@@ -217,7 +237,9 @@ public class TfNDArray implements NDArray {
     @Override
     public long[] toLongArray() {
         long[] result = new long[(int) getShape().size()];
-        tensor.rawData().asLongs().read(result);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().asLongs().read(result);
+        }
         return result;
     }
 
@@ -225,7 +247,9 @@ public class TfNDArray implements NDArray {
     @Override
     public boolean[] toBooleanArray() {
         boolean[] result = new boolean[(int) getShape().size()];
-        tensor.rawData().asBooleans().read(result);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().asBooleans().read(result);
+        }
         return result;
     }
 
@@ -237,7 +261,9 @@ public class TfNDArray implements NDArray {
         long product = sh.size();
         long len = dType.getNumOfBytes() * product;
         byte[] buf = new byte[Math.toIntExact(len)];
-        tensor.rawData().read(buf);
+        try (Tensor<?> tensor = operand.asTensor()) {
+            tensor.rawData().read(buf);
+        }
         return ByteBuffer.wrap(buf);
     }
 
@@ -274,9 +300,10 @@ public class TfNDArray implements NDArray {
             throw new IllegalArgumentException(
                     "shape are diff. Required: " + destShape + ", Actual " + inShape);
         }
-        ((TfNDArray) ndArray).tensor = tf.deepCopy(asOperand()).asOutput().tensor();
-        ((TfNDArray) ndArray).operand = null;
-        ((TfNDArray) ndArray).shape = new Shape(tensor.shape().asArray());
+        ((TfNDArray) ndArray).operand = tf.deepCopy(asOperand()).asOutput();
+        ((TfNDArray) ndArray).dataType = getDataType();
+        ((TfNDArray) ndArray).shape =
+                new Shape(getShape().stream().mapToLong(pair -> pair.getKey()).toArray());
     }
 
     /** {@inheritDoc} */
@@ -657,7 +684,6 @@ public class TfNDArray implements NDArray {
                                         ((TfNDArray) source).asOperand())
                                 .asOutput()
                                 .tensor());
-        ((TfNDArray) destination).clearOperand();
 
         return destination;
     }
@@ -1545,19 +1571,19 @@ public class TfNDArray implements NDArray {
     }
 
     public Tensor<?> getTensor() {
-        return tensor;
+        return operand.asTensor();
     }
 
     void setTensor(Tensor<?> tensor) {
         this.tensor = tensor;
-    }
-
-    void clearOperand() {
-        this.operand = null;
+        asOperand();
+        tensor.close();
     }
 
     int getRank() {
-        return tf.rank(asOperand()).asOutput().tensor().rawData().asInts().getInt(0);
+        try (Tensor<?> tensor = tf.rank(asOperand()).asOutput().tensor()) {
+            return tensor.rawData().asInts().getInt(0);
+        }
     }
 
     private <T extends TType> Constant<T> toConstant(Number n, DataType jType) {
