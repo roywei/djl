@@ -283,6 +283,12 @@ public class MxNDManager extends BaseNDManager {
 
     /** {@inheritDoc} */
     @Override
+    public MxNDManager newSubManager(boolean newThread) {
+        return newSubManager();
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void invoke(
             String operation, NDArray[] src, NDArray[] dest, PairList<String, ?> params) {
         JnaUtils.op(operation).invoke(this, src, dest, params);

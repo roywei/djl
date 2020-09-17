@@ -218,6 +218,12 @@ public class PtNDManager extends BaseNDManager {
 
     /** {@inheritDoc} */
     @Override
+    public PtNDManager newSubManager(boolean newThread) {
+        return newSubManager(device);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public PtNDManager newSubManager(Device device) {
         PtNDManager manager = new PtNDManager(this, device);
         attach(manager.uid, manager);

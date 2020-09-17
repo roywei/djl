@@ -1232,6 +1232,14 @@ public interface NDManager extends AutoCloseable {
     NDManager newSubManager(Device device);
 
     /**
+     * Creates a child {@code NDManager} and specify if it will be used in a new thread.
+     *
+     * @param newThread if the new {@code NDManager} be used in new thread
+     * @return a child {@code NDManager}
+     */
+    NDManager newSubManager(boolean newThread);
+
+    /**
      * Returns the default {@link Device} of this {@code NDManager}.
      *
      * @return the default {@link Device} of this {@code NDManager}

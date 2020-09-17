@@ -94,7 +94,7 @@ public class Predictor<I, O> implements AutoCloseable {
      */
     public Predictor(Model model, Translator<I, O> translator, boolean copy) {
         this.model = model;
-        this.manager = model.getNDManager().newSubManager();
+        this.manager = model.getNDManager().newSubManager(true);
         this.translator = translator;
         block = model.getBlock();
         parameterStore = new ParameterStore(manager, copy);

@@ -154,6 +154,12 @@ public class MockNDManager implements NDManager {
 
     /** {@inheritDoc} */
     @Override
+    public NDManager newSubManager(boolean newThread) {
+        return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void attach(String resourceId, AutoCloseable resource) {}
 
     /** {@inheritDoc} */
