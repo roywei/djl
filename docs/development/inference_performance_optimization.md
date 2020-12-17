@@ -94,11 +94,10 @@ By default, TensorFlow engine comes with oneDNN enabled, no special configuratio
 
 ### Thread configuration
 It's recommended to use 1 thread for operator parallelism during multithreading inference. 
-You can configure it by setting the following 3 envinronment variables:
+You can configure it by setting the following 2 envinronment variables:
 
 ```bash
 export OMP_NUM_THREADS=1
-export TF_NUM_INTEROP_THREADS=1
 export TF_NUM_INTRAOP_THREADS=1
 ```
 
