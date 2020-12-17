@@ -56,7 +56,7 @@ public class MultithreadedBenchmark extends AbstractBenchmark {
 
         List<PredictorCallable> callables = new ArrayList<>(numOfThreads);
         for (int i = 0; i < numOfThreads; ++i) {
-            callables.add(new PredictorCallable(model, inputData, metrics, counter, i, i == 0));
+            callables.add(new PredictorCallable(model.newPredictor(), inputData, metrics, counter, i, i == 0));
         }
 
         Object classification = null;
@@ -115,13 +115,13 @@ public class MultithreadedBenchmark extends AbstractBenchmark {
         private int steps;
 
         public PredictorCallable(
-                ZooModel<?, ?> model,
+                Predictor<?, ?> predictor,
                 Object inputData,
                 Metrics metrics,
                 AtomicInteger counter,
                 int workerId,
                 boolean collectMemory) {
-            this.predictor = model.newPredictor();
+            this.predictor = predictor;
             this.inputData = inputData;
             this.metrics = metrics;
             this.counter = counter;
