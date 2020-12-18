@@ -67,17 +67,19 @@ public class TfNDManager extends BaseNDManager {
     }
 
     EagerSession getEagerSession() {
-        if (eagerSession == null) {
-            eagerSession = EagerSession.options().async(true).build();
-        }
         return eagerSession;
     }
 
     Ops getTf() {
-        if (tf == null) {
-            tf = Ops.create(eagerSession);
-        }
         return tf;
+    }
+
+    void setEagerSession(EagerSession eagerSession) {
+        this.eagerSession = eagerSession;
+    }
+
+    void setTf(Ops tf) {
+        this.tf = tf;
     }
 
     public static void setRandomSeed(Integer seed) {
@@ -417,9 +419,8 @@ public class TfNDManager extends BaseNDManager {
     public TfNDManager newSubManager(Device device) {
         TfNDManager manager = new TfNDManager(this, device);
         attach(manager.uid, manager);
-        // initialize eager sessions and operators only for sub managers
-        manager.getEagerSession();
-        manager.getTf();
+        manager.setEagerSession(eagerSession);
+        manager.setTf(tf);
         return manager;
     }
 
@@ -427,9 +428,6 @@ public class TfNDManager extends BaseNDManager {
     @Override
     public void close() {
         super.close();
-        if (eagerSession != null) {
-            eagerSession.close();
-        }
     }
 
     private static final class SystemManager extends TfNDManager {

@@ -56,7 +56,9 @@ public class MultithreadedBenchmark extends AbstractBenchmark {
 
         List<PredictorCallable> callables = new ArrayList<>(numOfThreads);
         for (int i = 0; i < numOfThreads; ++i) {
-            callables.add(new PredictorCallable(model.newPredictor(), inputData, metrics, counter, i, i == 0));
+            callables.add(
+                    new PredictorCallable(
+                            model.newPredictor(), inputData, metrics, counter, i, i == 0));
         }
 
         Object classification = null;

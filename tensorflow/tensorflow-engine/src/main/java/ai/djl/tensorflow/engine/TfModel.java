@@ -29,11 +29,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.tensorflow.EagerSession;
 import org.tensorflow.SavedModelBundle;
+import org.tensorflow.op.Ops;
 import org.tensorflow.proto.framework.ConfigProto;
 import org.tensorflow.proto.framework.RunOptions;
 
 public class TfModel extends BaseModel {
+
+    EagerSession eagerSession = EagerSession.options().async(true).build();
+    Ops tf = Ops.create(eagerSession);
 
     /**
      * Constructs a new Model on a given device.
@@ -45,6 +50,8 @@ public class TfModel extends BaseModel {
         super(name);
         properties = new ConcurrentHashMap<>();
         manager = TfNDManager.getSystemManager().newSubManager(device);
+        ((TfNDManager) manager).setEagerSession(eagerSession);
+        ((TfNDManager) manager).setTf(tf);
         manager.setName("tfModel");
     }
 

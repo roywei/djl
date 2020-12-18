@@ -25,6 +25,7 @@ import org.tensorflow.TensorFlow;
 import org.tensorflow.internal.c_api.TF_DeviceList;
 import org.tensorflow.internal.c_api.TF_Status;
 import org.tensorflow.internal.c_api.global.tensorflow;
+import org.tensorflow.op.Ops;
 
 /**
  * The {@code TfEngine} is an implementation of the {@link Engine} based on the <a
@@ -36,6 +37,9 @@ import org.tensorflow.internal.c_api.global.tensorflow;
 public final class TfEngine extends Engine {
 
     public static final String ENGINE_NAME = "TensorFlow";
+
+    EagerSession eagerSession = EagerSession.options().async(true).build();
+    Ops tf = Ops.create(eagerSession);
 
     private TfEngine() {}
 
@@ -102,7 +106,10 @@ public final class TfEngine extends Engine {
     /** {@inheritDoc} */
     @Override
     public NDManager newBaseManager(Device device) {
-        return TfNDManager.getSystemManager().newSubManager(device);
+        TfNDManager manager = TfNDManager.getSystemManager().newSubManager(device);
+        manager.setEagerSession(eagerSession);
+        manager.setTf(tf);
+        return manager;
     }
 
     /** {@inheritDoc} */
