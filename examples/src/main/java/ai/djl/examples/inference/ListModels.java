@@ -16,9 +16,12 @@ import ai.djl.Application;
 import ai.djl.repository.Artifact;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ModelZoo;
+
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,14 +29,31 @@ public final class ListModels {
 
     private static final Logger logger = LoggerFactory.getLogger(ListModels.class);
 
-    private ListModels() {}
+    private ListModels() {
+    }
+
+    private static URI BASE_URI = URI.create("https://mlrepo.djl.ai/");
 
     public static void main(String[] args) throws IOException, ModelNotFoundException {
         Map<Application, List<Artifact>> models = ModelZoo.listModels();
         models.forEach(
                 (app, list) -> {
                     String appName = app.toString();
-                    list.forEach(artifact -> logger.info("{} {}", appName, artifact));
+                    list.forEach(
+                            artifact -> {
+                                logger.info("Application:{} Model:{}", appName, artifact);
+                                logger.info("This model contains the following files:");
+                                for (Map.Entry<String, Artifact.Item> entry :
+                                        artifact.getFiles().entrySet()) {
+                                    logger.info("file: " + entry.getKey());
+                                    URI fileUri = URI.create(entry.getValue().getUri());
+                                    URI baseUri = artifact.getMetadata().getRepositoryUri();
+                                    if (!fileUri.isAbsolute()) {
+                                        fileUri = BASE_URI.resolve(baseUri).resolve(fileUri);
+                                    }
+                                    logger.info("download link: " + fileUri.toString());
+                                }
+                            });
                 });
     }
 }
